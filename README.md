@@ -9,7 +9,7 @@ Finally, the library aims to escape the Common Curse™ of Common Lisp libraries
 
 ## checklist
 - [x] Parsing Messages (with unit tests)
-- [ ] ASDF System definition
+- [x] ASDF System definition
 - [ ] Unix Server
 - [ ] TCP Server
 - [ ] Better error handling through condition messages
