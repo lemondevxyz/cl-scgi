@@ -8,7 +8,8 @@ Currently, the status of the library is pre-alpha, with many of the features pla
 Finally, the library aims to escape the Common Curse™ of Common Lisp libraries missing documentation. It aims to be extremely usable with examples all around.
 
 ## checklist
-- [x] Parsing Messages
+- [x] Parsing Messages (with unit tests)
+- [ ] ASDF System definition
 - [ ] Unix Server
 - [ ] TCP Server
 - [ ] Better error handling through condition messages
