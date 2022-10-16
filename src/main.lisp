@@ -116,6 +116,25 @@ Example: (extract-header \"\"CONTENT_LENGTH\"\") ; \"CONTENT_LENGTH\" "
     ret))
 (export 'extract-header)
 
+(defun parse-headers (str)
+  "parse-headers is a function that parses all headers from a scgi request.
+parse-headers returns a hash map because it is more performant than an associated list.
+
+Example: \"\"CONTENT_LENGTH\" <00> \"27\" <00>
+\"SCGI\" <00> \"1\" <00>\"
+
+Note: <00> is the NUL character"
+  (declare (string str))
+  (let ((split (str:split (format nil "~a" #\Nul) str)))
+    (unless (or (zerop (length split)) (oddp (length split)))
+      (error "bad formatting; string must have an extra NUL character"))
+    (let ((hash (make-hash-table :test #'equal) ))
+      (loop for index from 0 below (length split) by 2 do
+        (when (< (1+ index) (length split))
+          (setf (gethash (extract-header (elt split index)) hash)
+                (extract-header (elt split (1+ index))))))
+      hash)))
+
 (defun parse-header (str)
   "DEPRECATED parse-header parses a scgi header. scgi headers are marked by their
 NUL character after both the key and the value.
@@ -146,24 +165,6 @@ the list must be a list of strings and of even length"
              (setf str (format nil "~a~a~a~a~a" str (elt list x) #\Nul (elt list (1+ x)) #\Nul)))
     str))
 
-(defun parse-headers (str)
-  "parse-headers is a function that parses all headers from a scgi request.
-parse-headers returns a hash map because it is more performant than an associated list.
-
-Example: \"\"CONTENT_LENGTH\" <00> \"27\" <00>
-\"SCGI\" <00> \"1\" <00>\"
-
-Note: <00> is the NUL character"
-  (declare (string str))
-  (let ((split (str:split (format nil "~a" #\Nul) str)))
-    (unless (or (zerop (length split)) (oddp (length split)))
-      (error "bad formatting; string must have an extra NUL character"))
-    (let ((hash (make-hash-table :test #'equal) ))
-      (loop for index from 0 below (length split) by 2 do
-        (when (< (1+ index) (length split))
-          (setf (gethash (extract-header (elt split index)) hash)
-                (extract-header (elt split (1+ index))))))
-      hash)))
 (export 'parse-headers)
 
 (defun parse-binary-header (binary)
