@@ -2,7 +2,9 @@
   :depends-on (#:babel
             #:str)
   :components ((:module "src"
-                :components ((:file "main"))))
+                :components ((:file "main")
+                             (:file "server")
+                             (:file "unix" :depends-on ("server")))))
   :in-order-to ((test-op (test-op "cl-scgi/tests"))))
 
 (defsystem "cl-scgi/tests"

@@ -13,4 +13,4 @@ Finally, the library aims to escape the Common Curse™ of Common Lisp libraries
 - [x] Unix Server
 - [ ] TCP Server
 - [x] Better error handling through condition messages
-- [ ] Multi-threaded functionality
+- [x] Multi-threaded functionality

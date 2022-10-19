@@ -6,14 +6,15 @@
     (declare (string str))
     (loop for x from 0 below (length lst) by 2 do
       (setf str
-            (format nil "~a\"~a\"~a\"~a\"~a"
+            (format nil "~a~a~a~a~a"
                     str
                     (elt lst x) #\Nul
                     (elt lst (1+ x)) #\Nul)))
     str))
 
-(def-suite* :cl-scgi)
+(def-suite* my-suite)
 (test extract-header
+  ;; DEPRECATED
   ;; extract proper header
   (is (equal "CONTENT_LENGTH" (cl-scgi:extract-header "\"CONTENT_LENGTH\"")))
   ;; signal error for invalid header formattings
@@ -42,24 +43,15 @@
 (defun request-format (headers body)
   (declare (list headers))
   (declare (string body))
-  (let ((vec (make-array 0 :fill-pointer 0 :element-type '(unsigned-byte 8)))
-        (header-len (cl-scgi:number-to-ascii-bytes
+  (let ((header-len (cl-scgi:number-to-ascii-bytes
                      (length
                       (babel:string-to-octets (list-to-header-string headers)))))
         (header-bytes (babel:string-to-octets (list-to-header-string headers)))
         (body-bytes (babel:string-to-octets body)))
-    (loop for x from 0 below (length header-len) do
-      (vector-push-extend (elt header-len x) vec))
-    (vector-push-extend #x3a vec)
-    (loop for x from 0 below (length header-bytes) do
-      (vector-push-extend (elt header-bytes x) vec))
-    (vector-push-extend #x2c vec)
-    (loop for x from 0 below (length body-bytes) do
-          (vector-push-extend (elt body-bytes x) vec))
-    vec))
+    (concatenate '(vector (unsigned-byte 8)) header-len #(#x3a) header-bytes #(#x2c) body-bytes)))
 
 (test parse-request
-  (let* ((headers '("CONTENT_TYPE" "text/html"))
+  (let* ((headers '("CONTENT_LENGTH" "13"))
          (body "HELLO WORLDIE")
          (headers-bytes (babel:string-to-octets (list-to-header-string headers)))
          (body-bytes (babel:string-to-octets body)))

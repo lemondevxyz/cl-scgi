@@ -20,17 +20,10 @@ parses the request(error-prone) and finally calls fn to handle the request."
                (if mt
                    (bt:make-thread
                     (lambda ()
-                      (parse-request-or-restart (read-until-eof stream) stream fn)))
-                   (parse-request-or-restart (read-until-eof stream) stream fn)))))
-      (when (probe-file path) (delete-file path)))))
-
-(defvar *msg* (babel:string-to-octets "hello world!"))
-(defun generic-callback (headers body stream)
-  (declare (ignorable headers))
-  (declare (ignorable body))
-  (declare (flexi-streams:flexi-io-stream stream))
-  (declare (type (vector (unsigned-byte 8)) headers body))
-  (write-bytes body stream)
-  (force-output stream))
-
+                      (parse-request-or-restart stream fn)
+                      (unix-sockets:close-unix-socket sock)))
+                   (progn
+                     (parse-request-or-restart stream fn))))))
+      (when (probe-file path) (delete-file path))))
+  (when (probe-file path) (delete-file path)))
 (export 'unix-server)
