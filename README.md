@@ -11,6 +11,6 @@ Finally, the library aims to escape the Common Curse™ of Common Lisp libraries
 - [x] Parsing Messages (with unit tests)
 - [x] ASDF System definition
 - [x] Unix Server
-- [ ] TCP Server
+- [x] TCP Server
 - [x] Better error handling through condition messages
 - [x] Multi-threaded functionality
