@@ -1,6 +1,5 @@
 (defsystem "cl-scgi"
-  :depends-on (#:babel
-            #:str)
+  :depends-on (#:babel #:alexandria #:flexi-streams #:bordeaux-threads #:usocket #:unix-sockets #:str)
   :components ((:module "src"
                 :components ((:file "main")
                              (:file "server")

@@ -2,6 +2,9 @@
 
 (ql:quickload '(:alexandria) :silent t)
 
+;; `server.lisp' is basically a file that's shared between
+;; `unix.lisp' and `tcp.lisp'.
+
 (deftype request-callback-type ()
   `(function ((vector (unsigned-byte 8))
               integer
@@ -119,3 +122,25 @@ header response."
     (vector-push-extend (char-code #\Newline) bytes)
     bytes))
 (export 'format-headers)
+
+(deftype positive-fixnum ()
+  `(integer 0 ,most-positive-fixnum))
+(defun read-until-content-length (content-len stream)
+  "read-until-content-length reads from the stream until it reaches content-len"
+  (declare (positive-fixnum content-len))
+  (declare (stream stream))
+  (let ((vec (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0)))
+    (print content-len)
+    (loop for x from 0 below content-len do
+      (vector-push-extend (read-byte stream) vec))
+    vec))
+(export 'read-until-content-length)
+
+(defun response-string (headers body stream)
+  "response-string is a function that sends a string body with a hash-table
+of headers."
+  (declare (stream stream))
+  (declare (hash-table headers))
+  (declare (string body))
+  (write-bytes (format-headers headers) stream)
+  (write-bytes (babel:string-to-octets body) stream))

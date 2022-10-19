@@ -1,4 +1,4 @@
-(ql:quickload '(:bordeaux-threads :unix-sockets :trivial-gray-streams) :silent t)
+(ql:quickload '(:bordeaux-threads :unix-sockets) :silent t)
 
 (in-package :cl-scgi)
 ;; requires server.lisp to work
