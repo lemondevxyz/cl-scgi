@@ -48,12 +48,7 @@ a vector of all bytes it read."
       (unless (equal byte :eof)
         (vector-push-extend byte read-input)))
     read-input))
-
-(defun handle-request-or-restart (stream fn)
-  (let ((req (read-until-eof stream)))
-    (multiple-value-bind (headers body)
-        (parse-request req)
-      (funcall fn headers body stream))))
+(export 'read-until-eof)
 
 (defvar *continue* nil
   "*continue* is an usused global variable. it is mainly defined to allow
@@ -123,19 +118,6 @@ header response."
     bytes))
 (export 'format-headers)
 
-(deftype positive-fixnum ()
-  `(integer 0 ,most-positive-fixnum))
-(defun read-until-content-length (content-len stream)
-  "read-until-content-length reads from the stream until it reaches content-len"
-  (declare (positive-fixnum content-len))
-  (declare (stream stream))
-  (let ((vec (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0)))
-    (print content-len)
-    (loop for x from 0 below content-len do
-      (vector-push-extend (read-byte stream) vec))
-    vec))
-(export 'read-until-content-length)
-
 (defun response-string (headers body stream)
   "response-string is a function that sends a string body with a hash-table
 of headers."
@@ -144,3 +126,4 @@ of headers."
   (declare (string body))
   (write-bytes (format-headers headers) stream)
   (write-bytes (babel:string-to-octets body) stream))
+(export 'response-string)

@@ -3,7 +3,8 @@
 (in-package :cl-scgi)
 ;; requires server.lisp to work
 
-(defun unix-server (path fn &key ((:multi-threaded mt) t))
+(defun unix-server (path fn &key ((:multi-threaded mt) t)
+                              ((:backlog bl) 128))
   "unix-server is a function that creates a unix socket, accepts connections,
 parses the request(error-prone) and finally calls fn to handle the request."
   (declare (string path))
@@ -11,7 +12,7 @@ parses the request(error-prone) and finally calls fn to handle the request."
   (declare (type (or t nil) mt))
   (when (probe-file path) (delete-file path))
   (unix-sockets:with-unix-socket
-      (sock (unix-sockets:make-unix-socket path))
+      (sock (unix-sockets:make-unix-socket path :backlog bl))
     (unwind-protect
          (let* ((*continue* t))
            (loop while *continue* do

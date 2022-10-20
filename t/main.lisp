@@ -12,7 +12,7 @@
                     (elt lst (1+ x)) #\Nul)))
     str))
 
-(def-suite* my-suite)
+(def-suite* cl-scgi)
 (test extract-header
   ;; DEPRECATED
   ;; extract proper header

@@ -5,7 +5,8 @@
 
 (defun tcp-server (host port fn &key
                                   ((:reuse-address ra) t)
-                                  ((:multi-threaded mt) t))
+                                  ((:multi-threaded mt) t)
+                                  ((:backlog bl) 128))
   "tcp-server is a function that listens on a tcp socket, accepts connections,
 parses the request(error-prone) and finally calls fn to handle the request."
   (declare (string host))
@@ -20,8 +21,7 @@ parses the request(error-prone) and finally calls fn to handle the request."
                (stream nil))
            (declare (type (or null usocket:stream-usocket) conn))
            (declare (type (or null stream) stream))
-           (setf sock
-                 (usocket:socket-listen host port :reuse-address ra :element-type '(unsigned-byte 8)))
+           (setf sock (usocket:socket-listen host port :reuse-address ra :element-type '(unsigned-byte 8) :backlog bl))
            (loop while *continue* do
              (setf conn (usocket:socket-accept sock :element-type '(unsigned-byte 8)))
              (setf stream (usocket:socket-stream conn))

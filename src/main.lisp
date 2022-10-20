@@ -134,6 +134,7 @@ Note: <00> is the NUL character"
           (setf (gethash (elt split index) hash)
                 (elt split (1+ index)))))
       hash)))
+(export 'parse-headers)
 
 (defun parse-header (str)
   "DEPRECATED parse-header parses a scgi header. scgi headers are marked by their
@@ -164,8 +165,6 @@ the list must be a list of strings and of even length"
           do
              (setf str (format nil "~a~a~a~a~a" str (elt list x) #\Nul (elt list (1+ x)) #\Nul)))
     str))
-
-(export 'parse-headers)
 
 (defun parse-binary-header (binary)
   "parse-binary-header is a function that parses headers represented in
@@ -221,6 +220,20 @@ parse-request throws an error in one of these cases:
                   (setf content-len-str (format nil "~a~a" content-len-str (code-char byte))))))
     (setf content-len (parse-integer content-len-str))
     (values headers-bytes content-len)))
+(export 'parse-request-from-stream)
+
+(deftype positive-fixnum ()
+  `(integer 0 ,most-positive-fixnum))
+(defun read-until-content-length (content-len stream)
+  "read-until-content-length reads from the stream until it reaches content-len"
+  (declare (positive-fixnum content-len))
+  (declare (stream stream))
+  (let ((vec (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0)))
+    (print content-len)
+    (loop for x from 0 below content-len do
+      (vector-push-extend (read-byte stream) vec))
+    vec))
+(export 'read-until-content-length)
 
 (defun parse-request (request)
   "DEPRECATED parse-request is a function that wraps around parse-request-from-stream
@@ -236,10 +249,8 @@ functions like `(parse-header (babel:octets-to-string headers))' and
   (let ((stream (flexi-streams:make-in-memory-input-stream request)))
     (multiple-value-bind (headers content-len)
         (parse-request-from-stream stream)
-      (let ((body (make-array 1 :fill-pointer 0 :element-type '(unsigned-byte 8))))
-        (loop for x from 0 below content-len do
-          (vector-push-extend (read-byte stream) body))
-        (values headers body)))))
+      (values headers (read-until-content-length content-len stream)))))
+(export 'parse-request)
 
 ;; (defun parse-request (request)
 ;;   "DEPRECATED parse-request is a function that parses a normal SCGI request.
@@ -294,10 +305,9 @@ functions like `(parse-header (babel:octets-to-string headers))' and
 ;;       (when (>= end (length request))
 ;;         (setf end (1- (length request))))
 ;;       (values headers (subseq request end (length request))))))
-(export 'parse-request)
 
 (defun parse-request-with-headers (request)
-  "parse-request-with-headers is a wrapper around parse-headers that parses
+  "DEPRECATED parse-request-with-headers is a wrapper around parse-headers that parses
 the headers and returns them in a hash table
 
 Note: this function, by itself, could throw an error if a utf-8 character
@@ -309,7 +319,7 @@ is invalid. To further debug this issue, see babel:octets-to-string"
 (export 'parse-request-with-headers)
 
 (defun parse-request-as-string (request)
-  "parse-request-as-string is a wrapper around parse-request-with-headers
+  "DEPRECATED parse-request-as-string is a wrapper around parse-request-with-headers
 with one key difference: the body is returned as a string.
 
 Note: this function, by itself, could throw an error if a utf-8 character
