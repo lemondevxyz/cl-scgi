@@ -1,4 +1,4 @@
-(ql:quickload '(:flexi-streams) :silent t)
+(ql:quickload '(:flexi-streams :fast-io) :silent t)
 (in-package :fiveam)
 
 (defun list-to-header-string (lst)

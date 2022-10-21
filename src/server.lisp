@@ -123,6 +123,11 @@ of headers."
   (declare (stream stream))
   (declare (hash-table headers))
   (declare (string body))
-  (write-bytes (format-headers headers) stream)
-  (write-bytes (babel:string-to-octets body) stream))
+  (let ((oldVal (gethash "Content-Length" headers)))
+        (unwind-protect
+             (let ()
+               (setf (gethash "Content-Length" headers) (length body))
+               (write-bytes (format-headers headers) stream)
+               (write-bytes (babel:string-to-octets body) stream)))
+        (setf (gethash "Content-Length" headers) oldVal)))
 (export 'response-string)
