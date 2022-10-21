@@ -7,6 +7,6 @@
   :in-order-to ((test-op (test-op "cl-scgi/tests"))))
 
 (defsystem "cl-scgi/tests"
-  :depends-on ("cl-scgi" "fiveam")
+  :depends-on ("cl-scgi" "fiveam" "flexi-streams")
   :components ((:module "t" :components ((:file "main"))))
-  :perform (test-op (o c) (symbol call :fiveam '#:run! :cl-scgi)))
+  :perform (test-op (o c) (symbol call :fiveam '#:run-all-tests :cl-scgi)))

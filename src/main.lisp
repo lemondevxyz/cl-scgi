@@ -229,7 +229,6 @@ parse-request throws an error in one of these cases:
   (declare (positive-fixnum content-len))
   (declare (stream stream))
   (let ((vec (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0)))
-    (print content-len)
     (loop for x from 0 below content-len do
       (vector-push-extend (read-byte stream) vec))
     vec))

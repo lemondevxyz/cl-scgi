@@ -44,7 +44,6 @@ a vector of all bytes it read."
     (declare (type (or integer null (eql :eof)) byte))
     (loop while (not (equal byte :eof)) do
       (setf byte (read-byte stream nil :eof))
-      (format t " read ~a " byte)
       (unless (equal byte :eof)
         (vector-push-extend byte read-input)))
     read-input))
