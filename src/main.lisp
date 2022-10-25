@@ -2,7 +2,7 @@
   (:use :cl :cl-user))
 (in-package :cl-scgi)
 
-(ql:quickload '(:flexi-streams :babel :str :alexandria) :silent t)
+(ql:quickload '(:fast-io :flexi-streams :babel :str :alexandria) :silent t)
 
 (defun list-of-p (τ thing)
   "list-of-p is a predicate that checks if a list is of that specific type."
@@ -16,9 +16,6 @@
 (deftype positive-fixnum ()
   "positive-fixnum names all integers from 1 to *mostpositive-fixnum*"
   `(integer 1 ,most-positive-fixnum))
-(deftype ascii-number ()
-  "DEPRECATED ascii-number is a number from 30 to 39"
-  `(integer #x30 #x39))
 
 (defun list-to-vector (list)
   "list-to-vector is a function that converts a (unsigned-byte 8) list
@@ -41,80 +38,18 @@ to a list of that same type"
       (setf list (append list (list (elt vec x)))))
     list))
 
-(defun number-to-ascii-bytes (num)
-  "DEPRECATED number-to-ascii-bytes converts a number to ascii bytes that are used
-for net code.
-
-Example: (number-to-ascii-bytes 123456789) ;; => (31 32 33 34 35 36 37 38 39)"
-  (declare (positive-fixnum num))
-  (let ((arr (list-to-vector '()))
-        (strnum (format nil "~a" num)))
-    (declare (type (vector (unsigned-byte 8) *) arr))
-    (declare (string strnum))
-    (loop for index from 0 below (length strnum) do
-      (let* ((digit (elt strnum index))
-             (ascii (+ (digit-char-p digit) #x30)))
-        (declare (character digit))
-        (declare (ascii-number ascii))
-        (vector-push-extend ascii arr)))
-    arr))
-(defun ascii-bytes-to-number (bytes)
-  "DEPRECATED ascii-bytes-to-number converts an array of bytes to a number that's used
-for net code.
-
-Example: (ascii-bytes-to-number '(31 32 33 34 35 36 37 38 39)) ;; => 123456789"
-  (declare (type (vector (unsigned-byte 8) *) bytes))
-  (let* ((len (length bytes))
-         (num 0))
-    (loop for index from 0 below len do
-      (let ((byte (elt bytes index)))
-        (unless (and (>= byte #x30) (<= byte #x39))
-          (error "byte must be between 30 and 39"))
-        (let* ((int (- byte #x30))
-               (place (1- (- len index))))
-          (setf num (+ (* (expt 10 place) int) num)))))
-    num))
-
-(export 'ascii-bytes-to-number)
-(export 'number-to-ascii-bytes)
-
-(defun != (a b)
-  "DEPRECATED != is the inverse of ="
-  (not (= a b)))
-
-(defun wrapped-in-char-p (str char)
-  "DEPRECATED wrapped-in-char-p is a predicate that returns T if a string has char
-in the start and end"
-  (declare (string str))
-  (declare (character char))
-  (and
-   (equal (elt str 0) char)
-   (equal (elt str (1- (length str))) char)))
-
-(defun wrapped-in-quotes-p (str)
-  "DEPRECATED wrapped-in-quotes is a predicate that returns T if a string has quotes
-at the start and end."
-  (declare (string str))
-  (wrapped-in-char-p str #\"))
-
-(defun two-quotes-p (str)
-  "two-quotes-p is a predicate that makes sure a string
-*only* has two quotes."
-  (declare (string str))
-  (= (str:count-substring "\"" str) 2))
-
-(defun extract-header (str)
-  "DEPRECATED extract-header is a function that extracts a header key or value string
-and simultaneously checks if it's valid or not.
-
-Example: (extract-header \"\"CONTENT_LENGTH\"\") ; \"CONTENT_LENGTH\" "
-  (unless (and (two-quotes-p str) (wrapped-in-quotes-p str))
-    (error (format nil "header ~a must be wrapped in quotes" str)))
-  (let ((ret (str:replace-all "\"" "" str)))
-    (unless (> (length ret) 0)
-      (error "header cannot be empty"))
-    ret))
-(export 'extract-header)
+;; (defun extract-header (str)
+;;   "DEPRECATED extract-header is a function that extracts a header key or value string
+;; and simultaneously checks if it's valid or not.
+;;
+;; Example: (extract-header \"\"CONTENT_LENGTH\"\") ; \"CONTENT_LENGTH\" "
+;;   (unless (and (two-quotes-p str) (wrapped-in-quotes-p str))
+;;     (error (format nil "header ~a must be wrapped in quotes" str)))
+;;   (let ((ret (str:replace-all "\"" "" str)))
+;;     (unless (> (length ret) 0)
+;;       (error "header cannot be empty"))
+;;     ret))
+;; (export 'extract-header)
 
 (defun parse-headers (str)
   "parse-headers is a function that parses all headers from a scgi request.
@@ -171,6 +106,7 @@ the list must be a list of strings and of even length"
 vector of octets"
   (declare (type (vector (unsigned-byte 8) *) binary))
   (parse-headers (babel:octets-to-string binary)))
+(export 'parse-binary-header)
 
 (defun parse-request-from-stream (stream)
   "parse-request-from-stream is a function that parses a normal SCGI request
@@ -179,7 +115,7 @@ from a stream.
 SCGI requests are composed of 4 parts:
 1. the header length + seperator(:)
 2. the header content
-3. the body seperator
+3. the body seperator (,)
 4. the body content
 
 parse-request-from-stream is quite strict in its design; several checks are made
@@ -199,27 +135,32 @@ parse-request throws an error in one of these cases:
    after the last header
 4. the given header length is bigger than the actual header length"
   (declare (stream stream))
-  (let* ((header-len-str "")
+  (let* ((header-len-str (make-array 0 :fill-pointer 0 :adjustable t
+                                       :element-type 'character))
          (header-len 0)
-         (headers-bytes (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0))
-         (content-len-str "")
-         (content-len 0))
-    (loop for byte = (read-byte stream)
-          until (eq byte #x3a) do
-            (setf header-len-str (format nil "~a~a" header-len-str (code-char byte))))
-    (setf header-len (parse-integer header-len-str))
-    (loop for x from 0 below header-len do
-      (vector-push-extend (read-byte stream) headers-bytes))
-    (unless (equal (read-byte stream) #x2c)
-      (error "malformed request; comma must be after headers"))
-    (loop for x from 15 below (length headers-bytes)
-          until (= content-len -1) do
-            (let ((byte (elt headers-bytes x)))
-              (if (= byte 0)
-                  (setf content-len -1)
-                  (setf content-len-str (format nil "~a~a" content-len-str (code-char byte))))))
-    (setf content-len (parse-integer content-len-str))
-    (values headers-bytes content-len)))
+         (content-len-str (make-array 0 :fill-pointer 0 :adjustable t
+                                        :element-type 'character))
+         (content-len 0)
+         (header-buf (fast-io:make-octet-vector 0)))
+    (declare (number header-len content-len))
+    (declare (type (vector character *) header-len-str content-len-str))
+    (fast-io:with-fast-input (buffer nil stream)
+      (loop for byte = (fast-io:fast-read-byte buffer)
+            until (eq byte #x3a) do
+              (vector-push-extend (code-char byte) header-len-str))
+      (setf header-len (parse-integer header-len-str))
+      (setf header-buf (fast-io:make-octet-vector header-len))
+      (fast-io:fast-read-sequence header-buf buffer 0 header-len)
+      (unless (equal (fast-io:fast-read-byte buffer) #x2c)
+        (error "malformed request; comma must be after headers"))
+      (loop for x from 15 below (length header-buf)
+            until (= content-len -1) do
+              (let ((byte (elt header-buf x)))
+                (if (= byte 0)
+                    (setf content-len -1)
+                    (vector-push-extend (code-char byte) content-len-str))))
+      (setf content-len (or (ignore-errors (parse-integer content-len-str)) 0)))
+    (values header-buf content-len)))
 (export 'parse-request-from-stream)
 
 (deftype positive-fixnum ()
@@ -229,6 +170,7 @@ parse-request throws an error in one of these cases:
   (declare (positive-fixnum content-len))
   (declare (stream stream))
   (let ((vec (make-array 1 :element-type '(unsigned-byte 8) :fill-pointer 0)))
+    (declare (type (vector (unsigned-byte 8) *) vec))
     (loop for x from 0 below content-len do
       (vector-push-extend (read-byte stream) vec))
     vec))
@@ -250,60 +192,6 @@ functions like `(parse-header (babel:octets-to-string headers))' and
         (parse-request-from-stream stream)
       (values headers (read-until-content-length content-len stream)))))
 (export 'parse-request)
-
-;; (defun parse-request (request)
-;;   "DEPRECATED parse-request is a function that parses a normal SCGI request.
-;;
-;; SCGI requests are composed of 4 parts:
-;; 1. the header length + seperator(:)
-;; 2. the header content
-;; 3. the body seperator
-;; 4. the body content
-;;
-;; parse-request is lenient in its design; several checks are not made
-;; and are left for the developer. For example, the header \"CONTENT_LENGTH\"
-;; doesn't *have to* match the size of the body.
-;;
-;; Furthermore, parse-request doesn't make any effort to parse the headers,
-;; instead it restricts itself to only seperating the body and header from
-;; the rest of the request, giving the developer complete freedom over how
-;; to deal with the request.
-;;
-;; parse-request throws an error in one of these cases:
-;; 1. comma isn't present in the packets..
-;; 2. the header length is bigger than the request itself
-;; 3. the request is malformed in the case of a comma not being present
-;;   after the last header
-;; 4. the given header length is bigger than the actual header length"
-;;   (declare (type (vector (unsigned-byte 8) *) request))
-;;   (let* ((found nil)
-;;         (len-bytes (list-to-vector '()))
-;;         (len-header 0)
-;;         (header-start -1)
-;;         (header-end -1)
-;;         (headers ""))
-;;     (declare (type (or t nil) found))
-;;     (declare (type (vector (unsigned-byte 8) *) len-bytes))
-;;     (let ((index 0))
-;;       (loop while (not found) do
-;;         (when (> index (length request))
-;;           (error "index too big"))
-;;         (when (= (elt request index) #x3a) (setf found t))
-;;         (unless found
-;;           (vector-push-extend (elt request index) len-bytes)
-;;           (setf index (1+ index))))
-;;       (setf len-header (ascii-bytes-to-number len-bytes))
-;;       (setf header-start (+ index 1))
-;;       (setf header-end (+ header-start len-header)))
-;;     (when (> header-end (length request))
-;;       (error "malformed request; header length is bigger than request itself"))
-;;     (setf headers (subseq request header-start header-end))
-;;     (unless (= (elt request header-end) #x2c)
-;;       (error "malformed request; bytes after headers must be #x2c: ~a" (elt request header-end)))
-;;     (let ((end (+ header-end 1)))
-;;       (when (>= end (length request))
-;;         (setf end (1- (length request))))
-;;       (values headers (subseq request end (length request))))))
 
 (defun parse-request-with-headers (request)
   "DEPRECATED parse-request-with-headers is a wrapper around parse-headers that parses

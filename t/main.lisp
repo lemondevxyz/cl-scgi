@@ -1,4 +1,4 @@
-(ql:quickload '(:flexi-streams :fast-io) :silent t)
+(ql:quickload '(:fiveam flexi-streams :fast-io) :silent t)
 (in-package :fiveam)
 
 (defun list-to-header-string (lst)
@@ -15,15 +15,6 @@
 
 (def-suite* header-suite)
 (in-suite header-suite)
-(test extract-header
-  ;; DEPRECATED
-  ;; extract proper header
-  (is (equal "CONTENT_LENGTH" (cl-scgi:extract-header "\"CONTENT_LENGTH\"")))
-  ;; signal error for invalid header formattings
-  (loop for x in '("CONTENT_LENGTH" "\"CONTENT_LENGTH" "\"CONTENT\"_LENGTH\"" "\"\"" )
-        do
-           (signals simple-error (cl-scgi:extract-header x))))
-
 (test parse-header
   ;; DEPRECATED
   ;; parse proper header
@@ -46,9 +37,9 @@
 (defun request-format (headers body)
   (declare (list headers))
   (declare (string body))
-  (let ((header-len (cl-scgi:number-to-ascii-bytes
-                     (length
-                      (babel:string-to-octets (list-to-header-string headers)))))
+  (let ((header-len (babel:string-to-octets
+                     (format nil "~a" (length
+                      (babel:string-to-octets (list-to-header-string headers))))))
         (header-bytes (babel:string-to-octets (list-to-header-string headers)))
         (body-bytes (babel:string-to-octets body)))
     (concatenate '(vector (unsigned-byte 8)) header-len #(#x3a) header-bytes #(#x2c) body-bytes)))
@@ -62,8 +53,8 @@
      (multiple-value-bind (v1 v2)
          ,@body)))
 
-(def-suite* parse-request)
-(in-suite parse-request)
+(def-suite* parse-request-suite)
+(in-suite parse-request-suite)
 (test parse-request-from-stream
   (multi-bind1
     (cl-scgi:parse-request-from-stream stream)
