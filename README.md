@@ -19,7 +19,7 @@ However, both functions have "shared" parameters in the shape of keys, notably:
 ## example
 Here is an app that prints to console the headers and the body string and writes "asd" to the HTTP client.
 ```common-lisp
-(defun callback
+(defun callback ()
      (declare (type (vector (unsigned-byte 8)) head))
      (declare (integer len))
      (let ((headers (cl-scgi:parse-headers (babel:octets-to-string head)))

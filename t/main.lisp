@@ -115,6 +115,7 @@
       (cl-scgi:read-until-content-length (length list) stream))
      (babel:octets-to-string vec))))
 
+
 (def-suite* response-writing)
 (in-suite response-writing)
 
@@ -134,6 +135,7 @@
 cab: 321~a
 ~a
 " #\Return #\Return #\Return)))))
+
 (test response-string
   (let* ((hash (make-hash-table :test 'equal))
          (body "hello world")
@@ -143,7 +145,8 @@ cab: 321~a
     (cl-scgi:response-string hash body stream)
     (is (equal
          (babel:octets-to-string (flexi-streams:get-output-stream-sequence stream))
-         (format nil "bac: 123~a
+         (format nil "Content-Length: 11~a
+bac: 123~a
 cab: 321~a
 ~a
-hello world" #\Return #\Return #\Return)))))
+hello world" #\Return #\Return #\Return #\Return)))))
